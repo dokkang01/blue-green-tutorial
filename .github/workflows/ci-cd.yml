@@ -39,10 +39,10 @@ jobs:
           set -e
           cd /home/${{ secrets.SERVER_USER }}/bluegreen
 
-          if docker ps | grep express-healthcheck-blue; then
+          if sudo docker ps | grep express-healthcheck-blue; then
             TARGET=green
             STOP=express-healthcheck-blue
-          elif docker ps | grep express-healthcheck-green; then
+          elif sudo docker ps | grep express-healthcheck-green; then
             TARGET=blue
             STOP=express-healthcheck-green
           else
@@ -51,20 +51,20 @@ jobs:
           fi
 
           echo "Deploying to: \$TARGET"
-          docker compose pull express-healthcheck-\$TARGET
-          docker compose up -d express-healthcheck-\$TARGET
+          sudo docker compose pull express-healthcheck-\$TARGET
+          sudo docker compose up -d express-healthcheck-\$TARGET
 
           if [ "\$STOP" != "none" ]; then
             echo "Running health check..."
             for i in {1..10}; do
               sleep 2
-              if docker exec express-healthcheck-\$TARGET curl -s http://localhost:3000/health; then
+              if sudo docker exec express-healthcheck-\$TARGET curl -s http://localhost:3000/health; then
                 echo "Health check passed"
                 break
               elif [ \$i -eq 10 ]; then
                 echo "Health check failed. Rolling back..."
-                docker stop express-healthcheck-\$TARGET
-                docker compose restart \$STOP
+                sudo docker stop express-healthcheck-\$TARGET
+                sudo docker compose restart \$STOP
                 exit 1
               fi
             done
@@ -74,12 +74,11 @@ jobs:
 
           echo "Switching Nginx to \$TARGET"
           sed -i "s/express-healthcheck-[a-z]\\+/express-healthcheck-\$TARGET/g" nginx.conf
-          docker stop nginx-proxy || true
-          docker rm -f nginx-proxy || true
-          docker compose up -d nginx-proxy
+          sudo docker stop nginx-proxy || true
+          sudo docker rm -f nginx-proxy || true
+          sudo docker compose up -d nginx-proxy
 
           if [ "\$STOP" != "none" ]; then
-            docker stop \$STOP || true
+            sudo docker stop \$STOP || true
           fi
           EOF
-
